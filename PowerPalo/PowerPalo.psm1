@@ -10,6 +10,9 @@ $PaloPort     = "443"
 $PaloAPIRoot  = ""
 $PaloVersion  = "v9.1"
 $PaloHeader   = ""
+$ModuleFolder = (Get-Module PowerPalo -ListAvailable).path -replace "PowerPalo\.psm1"
+$SavePath = "$ModuleFolder\$($ENV:Username)-variables.json"
+
 Function Get-PaloCreds
 {
     $PaloCreds
@@ -64,40 +67,68 @@ Function Set-PaloServer
 {
     param
     (
-        $NewPaloServer
+        $NewPaloServer,
+        [switch]
+        $SkipVariableSave
     )
 
     set-variable -scope 1 -name PaloServer -value $NewPaloServer
+    
+    if (-not $SkipVariableSave) 
+    {
+        Set-PaloAPIRoot -SkipVariableSave
+    }
 }
 
 Function Set-PaloProtocol
 {
     param
     (
-        $NewPaloProtocol
+        $NewPaloProtocol,
+        [switch]
+        $SkipVariableSave
     )
 
     set-variable -scope 1 -name PaloProtocol -value $NewPaloProtocol
+    
+    if (-not $SkipVariableSave) 
+    {
+        Set-PaloAPIRoot -SkipVariableSave
+    }
 }
 
 Function Set-PaloPort
 {
     param
     (
-        $NewPaloPort
+        $NewPaloPort,
+        [switch]
+        $SkipVariableSave
     )
 
     set-variable -scope 1 -name PaloPort -value $NewPaloPort
+    
+    if (-not $SkipVariableSave) 
+    {
+        Set-PaloAPIRoot -SkipVariableSave
+    }
 }
 
 Function Set-PaloVersion
 {
     param
     (
-        $NewPaloVersion
+        $NewPaloVersion,
+        [switch]
+        $SkipVariableSave
     )
 
     set-variable -scope 1 -name PaloVersion $NewPaloVersion
+    
+    if (-not $SkipVariableSave) 
+    {
+        Set-PaloAPIRoot -SkipVariableSave
+    }
 }
 
 Function Set-PaloAPIRoot
@@ -107,6 +138,8 @@ Function Set-PaloAPIRoot
         $NewPaloPort,
         $NewPaloProtocol,
         $NewPaloServer,
+        $NewPaloVersion,
+        [switch]
         $SkipVariableSave
     )
 
@@ -126,16 +159,38 @@ Function Set-PaloAPIRoot
         {
             Set-PaloPort $NewPaloPort
         }
+
+        if ($NewPaloVersion -ne $null)
+        {
+            Set-PaloPort $NewPaloVersion
+        }
     }
 
-    $NewPaloAPIRoot = "$($PaloProtocol)://$($PaloServer)/restapi/$PaloVersion"
+    $NewPaloAPIRoot = "$($PaloProtocol):/$($PaloServer)/restapi/$PaloVersion"
 
-    set-variable -scope 1 -name  -value 
+    set-variable -scope 1 -name PaloAPIRoot -value $NewPaloAPIRoot
 }
 
 Function Invoke-PaloVariableSave
 {
-    
+    get-variable -scope 1 | where {$_.name -match "Palo"} | convertto-json -depth 10 | Set-Content $SavePath
+}
+
+Function Invoke-PaloVariableLoad
+{
+    if (test-path $SavePath)
+    {
+        $Variables = Get-content $SavePath | convertfrom-json
+
+        foreach ($Variable in $Variables)
+        {
+            set-variable -scope 1 -name $Variable.name -value $Variable.Value
+        }
+    }
+    else
+    {
+        throw "Settings file not found"
+    }
 }
 
 ### Basic API Functions
@@ -171,7 +226,7 @@ Function Get-PaloObjectRegions
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/Regions"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -183,7 +238,7 @@ Function Get-PaloObjectApplications
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/Applications"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -195,7 +250,7 @@ Function Get-PaloObjectApplicationGroups
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/Application/Groups"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -207,7 +262,7 @@ Function Get-PaloObjectApplicationFilters
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/Application/Filters"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -219,7 +274,7 @@ Function Get-PaloObjectServices
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/Services"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -231,7 +286,7 @@ Function Get-PaloObjectServiceGroups
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/Service/Groups"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -243,7 +298,7 @@ Function Get-PaloObjectTags
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/Tags"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -255,7 +310,7 @@ Function Get-PaloObjectGlobalProtectHIPObjects
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/Global/Protect/HIPObjects"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -267,7 +322,7 @@ Function Get-PaloObjectGlobalProtectHipProfiles
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/Global/Protect/Hip/Profiles"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -279,7 +334,7 @@ Function Get-PaloObjectExternalDynamicLists
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/External/Dynamic/Lists"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -291,7 +346,7 @@ Function Get-PaloObjectCustomDataPatterns
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/Custom/Data/Patterns"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -303,7 +358,7 @@ Function Get-PaloObjectCustomSpywareSignatures
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/Custom/Spyware/Signatures"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -315,7 +370,7 @@ Function Get-PaloObjectCustomVulnerabilitySignatures
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/Custom/Vulnerability/Signatures"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -327,7 +382,7 @@ Function Get-PaloObjectCustomURLCategories
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/Custom/U/R"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -339,7 +394,7 @@ Function Get-PaloObjectAntivirusSecurityProfiles
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/Antivirus/Security/Profiles"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -351,7 +406,7 @@ Function Get-PaloObjectAntiSpywareSecurityProfiles
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/Anti/Spyware/Security/Profiles"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -363,7 +418,7 @@ Function Get-PaloObjectVulnerabilityProtectionSecurityProfiles
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/Vulnerability/Protection/Security/Profiles"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -375,7 +430,7 @@ Function Get-PaloObjectURLFilteringSecurityProfiles
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/U/R/L/Filtering"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -387,7 +442,7 @@ Function Get-PaloObjectFileBlockingSecurityProfiles
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/File/Blocking/Security/Profiles"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -399,7 +454,7 @@ Function Get-PaloObjectWildFireAnalysisSecurityProfiles
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/Wild/Fire/Analysis/Security"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -411,7 +466,7 @@ Function Get-PaloObjectDataFilteringSecurityProfiles
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/Data/Filtering/Security/Profiles"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -423,7 +478,7 @@ Function Get-PaloObjectDoSProtectionSecurityProfiles
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/Do/S/Protection/Security"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -435,7 +490,7 @@ Function Get-PaloObjectSecurityProfileGroups
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/Security/Profile/Groups"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -447,7 +502,7 @@ Function Get-PaloObjectLogForwardingProfiles
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/Log/Forwarding/Profiles"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -459,7 +514,7 @@ Function Get-PaloObjectAuthenticationEnforcements
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/Authentication/Enforcements"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -471,7 +526,7 @@ Function Get-PaloObjectDecryptionProfiles
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/Decryption/Profiles"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -483,7 +538,7 @@ Function Get-PaloObjectDecryptionForwardingProfiles
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/Decryption/Forwarding/Profiles"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -495,7 +550,7 @@ Function Get-PaloObjectSchedules
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/Schedules"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -507,7 +562,7 @@ Function Get-PaloObjectSDWANPathQualityProfiles
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/SDWAN/PathQualityProfiles"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -519,7 +574,7 @@ Function Get-PaloObjectSDWANTrafficDistributionProfiles
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Object/SDWAN/TrafficDistributionProfiles"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -531,7 +586,7 @@ Function Get-PaloPolicySecurityRules
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Policy/Security/Rules"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -543,7 +598,7 @@ Function Get-PaloPolicyNATRules
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Policy/NATRules"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -555,7 +610,7 @@ Function Get-PaloPolicyQoSRules
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Policy/QoS/Rules"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -567,7 +622,7 @@ Function Get-PaloPolicyPolicyBasedForwardingRules
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Policy/Policy/Based/Forwarding/Rules"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -579,7 +634,7 @@ Function Get-PaloPolicyDecryptionRules
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Policy/Decryption/Rules"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -591,7 +646,7 @@ Function Get-PaloPolicyTunnelInspectionRules
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Policy/Tunnel/Inspection/Rules"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -603,7 +658,7 @@ Function Get-PaloPolicyApplicationOverrideRules
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Policy/Application/Override/Rules"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -615,7 +670,7 @@ Function Get-PaloPolicyAuthenticationRules
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Policy/Authentication/Rules"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -627,7 +682,7 @@ Function Get-PaloPolicyDoSRules
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Policy/Do/S/Rules"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -639,7 +694,7 @@ Function Get-PaloPolicySDWANRules
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Policy/SDWAN/Rules"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -651,7 +706,7 @@ Function Get-PaloNetworkSDWANInterfaces
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Network/SDWAN/Interfaces"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -663,7 +718,7 @@ Function Get-PaloNetworkSDWANInterfaceProfiles
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Network/SDWAN/InterfaceProfiles"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -675,7 +730,7 @@ Function Get-PaloNetworkEthernetInterfaces
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Network/Ethernet/Interfaces"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -687,7 +742,7 @@ Function Get-PaloNetworkTunnelIntefaces
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Network/Tunnel/Intefaces"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -699,7 +754,7 @@ Function Get-PaloNetworkZonesVirtualRouters
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Network/Zones/Virtual/Routers"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -711,7 +766,7 @@ Function Get-PaloNetworkQoSInterfaces
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Network/QoS/Interfaces"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -723,7 +778,7 @@ Function Get-PaloNetworkVirtualSystems
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Network/Virtual/Systems"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -735,7 +790,7 @@ Function Get-PaloNetwork
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Network/"
 
     Invoke-RestMethod -method get -uri $uri 
 }
@@ -747,58 +802,13 @@ Function Get-PaloNetwork
 
     )
 
-    $uri = "$PaloAPIRoot/"
+    $uri = "$PaloAPIRoot/Network/"
 
     Invoke-RestMethod -method get -uri $uri 
 }
 
 ### Advanced functions
 
+### Module variables load
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Invoke-PaloVariableLoad
