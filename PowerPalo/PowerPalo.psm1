@@ -1,5 +1,9 @@
 ##PowerPalo.psm1
 
+##
+
+Import-Module AdhocAves.CommonFunctions
+
 ##Internal variables
 
 $PaloCreds    = $null
@@ -11,7 +15,7 @@ $PaloAPIRoot  = ""
 $PaloVersion  = "v9.1"
 $PaloHeader   = ""
 $ModuleFolder = (Get-Module PowerPalo -ListAvailable).path -replace "PowerPalo\.psm1"
-$SavePath = "$ModuleFolder\$($ENV:Username)-variables.json"
+$SaveFile = "$($ENV:Username)-variables.json"
 
 Function Get-PaloCreds
 {
@@ -173,23 +177,21 @@ Function Set-PaloAPIRoot
 
 Function Invoke-PaloVariableSave
 {
-    get-variable -scope 1 | where {$_.name -match "Palo"} | convertto-json -depth 10 | Set-Content $SavePath
+    $AllVariables = get-variable -Scope 1 | where {$_.name -match "Palo"}
+    $SaveFile = "PowerPalo-$($ENV:Username)-Variables.json"
+
+    Write-Debug "Starting save job to $SaveFile"
+
+    Invoke-VariableJSONSave -ModuleName "PowerPalo" -SaveFile $SaveFile -Variables $AllVariables -verbosepreference:$VerbosePreference
 }
 
 Function Invoke-PaloVariableLoad
 {
-    if (test-path $SavePath)
-    {
-        $Variables = Get-content $SavePath | convertfrom-json
+    $Variables =  Invoke-VariableJSONLoad -LoadFile $SaveFile -Verbosepreference:$VerbosePreference
 
-        foreach ($Variable in $Variables)
-        {
-            set-variable -scope 1 -name $Variable.name -value $Variable.Value
-        }
-    }
-    else
+    foreach ($Variable in $Variables)
     {
-        throw "Settings file not found"
+        set-variable -scope 1 -name $Variable.name -value $Variable.Value
     }
 }
 
